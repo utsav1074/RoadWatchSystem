@@ -1,0 +1,17 @@
+# ================= NODE =================
+node_modules/
+npm-debug.log
+.env
+
+# ================= EXPO =================
+.expo/
+.expo-shared/
+web-build/
+dist/
+
+# ================= GENERAL =================
+.DS_Store
+Thumbs.db
+
+# ================= UPLOADS =================
+backend/uploads/
