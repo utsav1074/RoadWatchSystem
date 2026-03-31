@@ -5,12 +5,7 @@ const path = require("path");
 const fs = require("fs");
 
 const verifyToken = require("../middleware/authMiddleware");
-const {
-  getProfile,
-  uploadProfileImage,
-  linkVehicle,
-  unlinkVehicle,
-} = require("../controllers/profileController");
+const { createReport } = require("../controllers/reportController");
 
 // ================= ENSURE FOLDER =================
 const ensureDir = (dir) => {
@@ -22,12 +17,19 @@ const ensureDir = (dir) => {
 // ================= MULTER CONFIG =================
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = "uploads/profileImages/";
+    let dir = "uploads/";
+
+    if (file.fieldname === "plateImage") {
+      dir = "uploads/plateImages/";
+    } else if (file.fieldname === "supportImage") {
+      dir = "uploads/supportImages/";
+    }
+
     ensureDir(dir); // auto-create folder
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}_profile${path.extname(
+    const uniqueName = `${Date.now()}_${file.fieldname}${path.extname(
       file.originalname,
     )}`;
     cb(null, uniqueName);
@@ -45,17 +47,15 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, fileFilter });
 
-// ================= ROUTES =================
-router.get("/", verifyToken, getProfile);
-
+// ================= ROUTE =================
 router.post(
-  "/image",
+  "/report",
   verifyToken,
-  upload.single("profileImage"),
-  uploadProfileImage,
+  upload.fields([
+    { name: "plateImage", maxCount: 1 },
+    { name: "supportImage", maxCount: 1 },
+  ]),
+  createReport,
 );
-
-router.post("/vehicle/link", verifyToken, linkVehicle);
-router.delete("/vehicle/:vehicleId", verifyToken, unlinkVehicle);
 
 module.exports = router;

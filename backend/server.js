@@ -10,12 +10,15 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const authRoutes = require("./routes/authRoutes");
 const profileRoutes = require("./routes/profileRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 
 app.use("/api", authRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api", reportRoutes);
 
 app.get("/", (req, res) => {
   res.send("Backend running");
 });
+
 
 app.listen(5000);

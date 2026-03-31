@@ -96,10 +96,10 @@ export default function Map({ onLocationSelect }) {
       {coords && (
         <View className="mt-4 bg-white border border-slate-200 p-3 rounded-2xl">
           <Text className="text-xs text-slate-500">
-            Latitude: {coords.latitude.toFixed(6)}
+            Latitude: {coords.latitude.toFixed(8)}
           </Text>
           <Text className="text-xs text-slate-500">
-            Longitude: {coords.longitude.toFixed(6)}
+            Longitude: {coords.longitude.toFixed(8)}
           </Text>
         </View>
       )}

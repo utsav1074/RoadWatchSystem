@@ -15,8 +15,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { IP_ADDRESS } from "../../components/IP";
+
+import {
+  getProfile,
+  uploadProfileImage,
+  linkVehicle,
+  deleteVehicle,
+} from "../../services/profileService";
+
+import { FILE_URL } from "../../config/api";
 
 export default function Profile() {
   const router = useRouter();
@@ -34,22 +41,7 @@ export default function Profile() {
     try {
       setLoading(true);
 
-      const token = await AsyncStorage.getItem("token");
-
-      if (!token) {
-        Alert.alert("Session Expired", "Please login again.");
-        router.replace("/");
-        return;
-      }
-
-      const response = await fetch(`http://${IP_ADDRESS}/api/profile`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
+      const { response, data } = await getProfile();
 
       if (!response.ok) {
         Alert.alert("Error", data.message || "Failed to load profile.");
@@ -60,12 +52,15 @@ export default function Profile() {
       setVehicles(data.vehicles || []);
 
       setProfileImage(
-        data.user?.imagePath
-          ? `http://${IP_ADDRESS}${data.user.imagePath}`
-          : null,
+        data.user?.imagePath ? `${FILE_URL}${data.user.imagePath}` : null,
       );
-    } catch {
-      Alert.alert("Error", "Unable to connect to server.");
+    } catch (err) {
+      if (err.message === "NO_TOKEN") {
+        Alert.alert("Session Expired", "Please login again.");
+        router.replace("/");
+      } else {
+        Alert.alert("Error", "Unable to connect to server.");
+      }
     } finally {
       setLoading(false);
     }
@@ -95,14 +90,6 @@ export default function Profile() {
 
       if (result.canceled) return;
 
-      const token = await AsyncStorage.getItem("token");
-
-      if (!token) {
-        Alert.alert("Session Expired", "Please login again.");
-        router.replace("/");
-        return;
-      }
-
       setUploadingImage(true);
 
       const formData = new FormData();
@@ -112,25 +99,22 @@ export default function Profile() {
         type: "image/jpeg",
       });
 
-      const response = await fetch(`http://${IP_ADDRESS}/api/profile/image`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
+      const { response, data } = await uploadProfileImage(formData);
 
       if (!response.ok) {
         Alert.alert("Error", data.message || "Upload failed.");
         return;
       }
 
-      setProfileImage(`http://${IP_ADDRESS}${data.imagePath}`);
+      setProfileImage(`${FILE_URL}${data.imagePath}`);
       Alert.alert("Success", data.message);
-    } catch {
-      Alert.alert("Error", "Image upload failed.");
+    } catch (err) {
+      if (err.message === "NO_TOKEN") {
+        Alert.alert("Session Expired", "Please login again.");
+        router.replace("/");
+      } else {
+        Alert.alert("Error", "Image upload failed.");
+      }
     } finally {
       setUploadingImage(false);
     }
@@ -139,14 +123,6 @@ export default function Profile() {
   // ================= LINK VEHICLE =================
   const addVehicle = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
-
-      if (!token) {
-        Alert.alert("Session Expired", "Please login again.");
-        router.replace("/");
-        return;
-      }
-
       const plate = newPlate.trim().toUpperCase();
 
       if (!plate) {
@@ -156,19 +132,7 @@ export default function Profile() {
 
       setLinkingVehicle(true);
 
-      const response = await fetch(
-        `http://${IP_ADDRESS}/api/profile/vehicle/link`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ vehicleNumber: plate }),
-        },
-      );
-
-      const data = await response.json();
+      const { response, data } = await linkVehicle(plate);
 
       if (!response.ok) {
         Alert.alert("Error", data.message || "Failed.");
@@ -178,8 +142,13 @@ export default function Profile() {
       setNewPlate("");
       Alert.alert("Success", data.message);
       fetchProfile();
-    } catch {
-      Alert.alert("Error", "Server error.");
+    } catch (err) {
+      if (err.message === "NO_TOKEN") {
+        Alert.alert("Session Expired", "Please login again.");
+        router.replace("/");
+      } else {
+        Alert.alert("Error", "Server error.");
+      }
     } finally {
       setLinkingVehicle(false);
     }
@@ -188,25 +157,7 @@ export default function Profile() {
   // ================= REMOVE VEHICLE =================
   const removeVehicle = async (vehicleId) => {
     try {
-      const token = await AsyncStorage.getItem("token");
-
-      if (!token) {
-        Alert.alert("Session Expired", "Please login again.");
-        router.replace("/");
-        return;
-      }
-
-      const response = await fetch(
-        `http://${IP_ADDRESS}/api/profile/vehicle/${vehicleId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      const data = await response.json();
+      const { response, data } = await deleteVehicle(vehicleId);
 
       if (!response.ok) {
         Alert.alert("Error", data.message || "Failed.");
@@ -215,13 +166,20 @@ export default function Profile() {
 
       Alert.alert("Success", data.message);
       fetchProfile();
-    } catch {
-      Alert.alert("Error", "Server error.");
+    } catch (err) {
+      if (err.message === "NO_TOKEN") {
+        Alert.alert("Session Expired", "Please login again.");
+        router.replace("/");
+      } else {
+        Alert.alert("Error", "Server error.");
+      }
     }
   };
 
   // ================= LOGOUT =================
   const logoutUser = async () => {
+    const AsyncStorage =
+      require("@react-native-async-storage/async-storage").default;
     await AsyncStorage.removeItem("token");
     router.replace("/");
   };

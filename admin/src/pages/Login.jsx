@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Shield } from "lucide-react";
 import InputField from "../components/InputField";
 
+import { loginUser } from "../services/authService";
+
 export default function Login() {
   const navigate = useNavigate();
 
@@ -41,15 +43,7 @@ export default function Login() {
     try {
       setLoading(true);
 
-      const res = await fetch("http://localhost:5000/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json();
+      const { res, data } = await loginUser(form);
 
       if (!res.ok) {
         setIsError(true);
@@ -70,6 +64,7 @@ export default function Login() {
   };
 
   return (
+    // UI EXACT SAME
     <div className="min-h-screen flex items-center justify-center bg-[#F6F9FE] py-6">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-6">

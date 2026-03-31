@@ -10,9 +10,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import InputField from "../components/InputField";
-import { IP_ADDRESS } from "../components/IP";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import { loginUser } from "../services/authService";
 
 export default function Login() {
   const [form, setForm] = useState({
@@ -46,15 +47,7 @@ export default function Login() {
     try {
       setLoading(true);
 
-      const res = await fetch(`http://${IP_ADDRESS}/api/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json();
+      const { res, data } = await loginUser(form);
 
       if (!res.ok) {
         setIsError(true);

@@ -16,6 +16,8 @@ import DropdownField from "../../components/DropdownField";
 import LiveImageBox from "../../components/LiveImageBox";
 import Map from "../../components/Map";
 
+import { submitReport } from "../../services/reportService";
+
 export default function Report() {
   const router = useRouter();
 
@@ -61,14 +63,12 @@ export default function Report() {
     return result.assets?.[0] ?? null;
   };
 
-  // Capture license plate image
   const capturePlate = async () => {
     const img = await takePhoto();
     if (!img) return;
     setPlatePhoto(img);
   };
 
-  // Capture supporting evidence image
   const captureEvidence = async () => {
     const img = await takePhoto();
     if (!img) return;
@@ -76,32 +76,66 @@ export default function Report() {
   };
 
   // =========================
-  // FORM VALIDATION
-  // =========================
-  const isValid =
-    plate.trim().length > 0 &&
-    vehicleType &&
-    violationType &&
-    description.trim().length > 0 &&
-    selectedLocation &&
-    platePhoto &&
-    evidencePhoto;
-
-  // =========================
   // SUBMIT HANDLER
   // =========================
-  const handleSubmit = () => {
-    if (!isValid) return;
+  const handleSubmit = async () => {
+    try {
+      const formData = new FormData();
 
-    // Later this will connect to backend API
-    Alert.alert("Success", "Report submitted successfully!");
+      formData.append("plate", plate.trim().toUpperCase());
+      formData.append("violationType", violationType);
+      formData.append("description", description);
+
+      if (selectedLocation) {
+        formData.append("latitude", selectedLocation.latitude);
+        formData.append("longitude", selectedLocation.longitude);
+      }
+
+      if (platePhoto) {
+        formData.append("plateImage", {
+          uri: platePhoto.uri,
+          name: `plate_${Date.now()}.jpg`,
+          type: "image/jpeg",
+        });
+      }
+
+      if (evidencePhoto) {
+        formData.append("supportImage", {
+          uri: evidencePhoto.uri,
+          name: `evidence_${Date.now()}.jpg`,
+          type: "image/jpeg",
+        });
+      }
+
+      const { response, data } = await submitReport(formData);
+
+      if (!response.ok) {
+        Alert.alert("Error", data.message || "Failed to submit.");
+        return;
+      }
+
+      Alert.alert("Success", data.message);
+
+      // RESET FORM
+      setPlate("");
+      setVehicleType("");
+      setViolationType("");
+      setDescription("");
+      setSelectedLocation(null);
+      setPlatePhoto(null);
+      setEvidencePhoto(null);
+    } catch (err) {
+      if (err.message === "NO_TOKEN") {
+        Alert.alert("Session Expired", "Please login again.");
+        router.replace("/");
+      } else {
+        Alert.alert("Error", "Server error.");
+      }
+    }
   };
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
-      {/* =========================
-          HEADER SECTION
-      ========================== */}
       <View className="px-5 pt-5 pb-4 border-b border-slate-200 bg-white">
         <View className="flex-row items-center">
           <Pressable onPress={() => router.push("/home")} className="mr-3">
@@ -116,9 +150,6 @@ export default function Report() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View className="px-5 pt-6">
-          {/* =========================
-              VEHICLE DETAILS SECTION
-          ========================== */}
           <View className="mb-5">
             <Text className="text-xl font-semibold text-slate-900">
               Vehicle Details
@@ -128,7 +159,6 @@ export default function Report() {
             </Text>
           </View>
 
-          {/* License Plate Input */}
           <View className="mb-6">
             <Text className="text-gray-800 font-medium mb-2">
               License Plate Number <Text className="text-red-500">*</Text>
@@ -143,7 +173,6 @@ export default function Report() {
             />
           </View>
 
-          {/* Vehicle Type Dropdown */}
           <DropdownField
             label="Vehicle Type"
             value={vehicleType}
@@ -161,7 +190,6 @@ export default function Report() {
             icon="car-outline"
           />
 
-          {/* Violation Type Dropdown */}
           <DropdownField
             label="Violation Type"
             value={violationType}
@@ -177,9 +205,6 @@ export default function Report() {
             icon="warning-outline"
           />
 
-          {/* =========================
-              DESCRIPTION SECTION
-          ========================== */}
           <View className="mb-6">
             <Text className="text-gray-800 font-medium mb-2">
               Description <Text className="text-red-500">*</Text>
@@ -197,14 +222,8 @@ export default function Report() {
             />
           </View>
 
-          {/* =========================
-              MAP LOCATION SECTION
-          ========================== */}
           <Map onLocationSelect={setSelectedLocation} />
 
-          {/* =========================
-              LICENSE PLATE IMAGE
-          ========================== */}
           <View className="mb-7">
             <Text className="text-slate-900 text-base font-semibold mb-4">
               License Plate Photo <Text className="text-red-500">*</Text>
@@ -218,9 +237,6 @@ export default function Report() {
             />
           </View>
 
-          {/* =========================
-              SUPPORTING EVIDENCE IMAGE
-          ========================== */}
           <View className="mb-8">
             <Text className="text-slate-900 text-base font-semibold mb-4">
               Supporting Evidence <Text className="text-red-500">*</Text>
@@ -234,11 +250,7 @@ export default function Report() {
             />
           </View>
 
-          {/* =========================
-              SUBMIT BUTTON
-          ========================== */}
           <Pressable
-            disabled={!isValid}
             onPress={handleSubmit}
             className="rounded-3xl py-4 mb-3 items-center bg-slate-700"
           >

@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import InputField from "../components/InputField";
 
+import { registerUser } from "../services/authService";
+
 export default function Register() {
   const navigate = useNavigate();
 
@@ -44,15 +46,7 @@ export default function Register() {
     try {
       setLoading(true);
 
-      const res = await fetch("http://localhost:5000/api/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json();
+      const { res, data } = await registerUser(form);
 
       if (!res.ok) {
         setIsError(true);
@@ -71,6 +65,7 @@ export default function Register() {
   };
 
   return (
+    // UI EXACT SAME
     <div className="min-h-screen flex items-center justify-center bg-[#F6F9FE] py-6">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-3xl p-10 border border-[#E2E8F0] shadow-xl">

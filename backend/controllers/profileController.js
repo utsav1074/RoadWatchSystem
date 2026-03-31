@@ -45,7 +45,8 @@ const uploadProfileImage = (req, res) => {
 
   if (!req.file) return res.status(400).json({ message: "No image selected." });
 
-  const imagePath = `/uploads/${req.file.filename}`;
+  // ✅ UPDATED PATH
+  const imagePath = `/uploads/profileImages/${req.file.filename}`;
 
   updateProfileImage(userId, imagePath, (err, result) => {
     if (err) return res.status(500).json({ message: "Update failed." });

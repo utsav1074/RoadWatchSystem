@@ -12,7 +12,8 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState, useEffect } from "react";
 import InputField from "../components/InputField";
-import { IP_ADDRESS } from "../components/IP";
+
+import { registerUser } from "../services/authService";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -49,15 +50,7 @@ export default function Register() {
     try {
       setLoading(true);
 
-      const res = await fetch(`http://${IP_ADDRESS}/api/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json();
+      const { res, data } = await registerUser(form);
 
       if (!res.ok) {
         setIsError(true);
