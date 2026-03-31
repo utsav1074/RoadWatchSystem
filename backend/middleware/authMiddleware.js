@@ -1,6 +1,4 @@
-const jwt = require("jsonwebtoken");
-
-const JWT_SECRET = "roadwatch_jwt_secret_key";
+const { verifyTokenUtil } = require("../utils/jwt");
 
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -19,13 +17,11 @@ const verifyToken = (req, res, next) => {
     });
   }
 
-  const token = parts[1];
-
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = verifyTokenUtil(parts[1]);
     req.user = decoded;
     next();
-  } catch (error) {
+  } catch {
     return res.status(401).json({
       message: "Invalid or expired token.",
     });

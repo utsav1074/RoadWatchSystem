@@ -1,12 +1,12 @@
 const express = require("express");
 const router = express.Router();
 
-const register = require("../controllers/registerController");
 const login = require("../controllers/loginController");
-const verifyToken = require("../middleware/jwt");
+const register = require("../controllers/registerController");
+const verifyToken = require("../middleware/authMiddleware");
 
-router.post("/register", register);
 router.post("/login", login);
+router.post("/register", register);
 
 router.get("/verify", verifyToken, (req, res) => {
   return res.status(200).json({

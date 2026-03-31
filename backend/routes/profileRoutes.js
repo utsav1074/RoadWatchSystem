@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 
-const verifyToken = require("../middleware/jwt");
+const verifyToken = require("../middleware/authMiddleware");
 const {
   getProfile,
   uploadProfileImage,
@@ -12,9 +12,7 @@ const {
 } = require("../controllers/profileController");
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
+  destination: (req, file, cb) => cb(null, "uploads/"),
   filename: (req, file, cb) => {
     const uniqueName = `${Date.now()}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
@@ -22,23 +20,15 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpg|jpeg|png|webp/;
-  const extname = allowedTypes.test(
-    path.extname(file.originalname).toLowerCase(),
-  );
-  const mimetype = allowedTypes.test(file.mimetype);
+  const allowed = /jpg|jpeg|png|webp/;
+  const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+  const mime = allowed.test(file.mimetype);
 
-  if (extname && mimetype) {
-    return cb(null, true);
-  }
-
+  if (ext && mime) return cb(null, true);
   cb(new Error("Only image files are allowed."));
 };
 
-const upload = multer({
-  storage,
-  fileFilter,
-});
+const upload = multer({ storage, fileFilter });
 
 router.get("/", verifyToken, getProfile);
 router.post(
