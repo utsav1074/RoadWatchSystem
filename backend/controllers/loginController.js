@@ -36,13 +36,16 @@ const login = (req, res) => {
       });
     }
 
+    // ✅ INCLUDE ROLE IN TOKEN
     const token = generateToken({
       userId: user.user_id,
+      role: user.user_role,
     });
 
     return res.status(200).json({
       message: "Login successful",
       token,
+      role: user.user_role, // ✅ IMPORTANT
     });
   });
 };

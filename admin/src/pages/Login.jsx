@@ -51,6 +51,13 @@ export default function Login() {
         return;
       }
 
+      // ✅ ONLY ADMIN ALLOWED
+      if (data.role !== "admin") {
+        setIsError(true);
+        setMessage("Access denied. Admins only.");
+        return;
+      }
+
       localStorage.setItem("token", data.token);
 
       navigate("/dashboard");

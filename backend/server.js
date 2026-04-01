@@ -11,14 +11,17 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const authRoutes = require("./routes/authRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const adminReportRoutes = require("./routes/adminReportRoutes");
+const reviewRoutes = require("./routes/reviewRoutes"); // ✅ NEW
 
 app.use("/api", authRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api", reportRoutes);
+app.use("/api", adminReportRoutes);
+app.use("/api", reviewRoutes); // ✅ NEW
 
 app.get("/", (req, res) => {
   res.send("Backend running");
 });
-
 
 app.listen(5000);

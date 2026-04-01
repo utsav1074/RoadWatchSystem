@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Eye, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Dropdown from "../components/Dropdown";
 
+import { fetchReports, deleteReport } from "../services/adminReportService";
+
 export default function Reports() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // ================= DROPDOWN OPTIONS =================
   const STATUS_OPTIONS = ["All", "Accepted", "Pending", "Rejected"];
@@ -19,72 +24,69 @@ export default function Reports() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("All Time");
 
-  // ================= STRUCTURED DATA =================
-  const reports = [
-    {
-      id: 1,
-      reporter: {
-        name: "Ahmed Khan",
-        username: "ahmedk",
-      },
-      vehicle: {
-        plate: "BA-2-PA-1234",
-        user: {
-          name: "Fatima Ali",
-          username: "fatima.ali",
+  // ================= FETCH DATA =================
+  useEffect(() => {
+    loadReports();
+  }, [search, statusFilter]);
+
+  const loadReports = async () => {
+    try {
+      const { res, data } = await fetchReports(search, statusFilter);
+
+      if (!res.ok) return;
+
+      const formatted = data.map((r) => ({
+        id: r.report_id,
+        reporter: {
+          name: r.reporter_name,
+          username: r.reporter_username,
         },
-      },
-      violation: "Speeding",
-      status: "Accepted",
-      date: "Feb 20, 2026",
-    },
-    {
-      id: 2,
-      reporter: {
-        name: "Hassan Raza",
-        username: "hassan_r",
-      },
-      vehicle: {
-        plate: "BA-3-PA-5678",
-        user: null,
-      },
-      violation: "Red Light",
-      status: "Pending",
-      date: "Feb 22, 2026",
-    },
-    {
-      id: 3,
-      reporter: {
-        name: "Sara Malik",
-        username: "sara_m",
-      },
-      vehicle: {
-        plate: "BA-1-PA-9876",
-        user: {
-          name: "Ali Khan",
-          username: "alikhan",
+        vehicle: {
+          plate: r.vehicle_number,
+          user: r.owner_name
+            ? {
+                name: r.owner_name,
+                username: r.owner_username,
+              }
+            : null,
         },
-      },
-      violation: "Illegal Parking",
-      status: "Rejected",
-      date: "Feb 25, 2026",
-    },
-  ];
+        violation: r.violation_type,
+        // FIX: normalize status to match original UI exactly
+        status:
+          r.report_status === "accepted"
+            ? "Accepted"
+            : r.report_status === "rejected"
+              ? "Rejected"
+              : "Pending",
+        date: new Date(r.report_date).toLocaleDateString(),
+      }));
 
-  // ================= FILTER LOGIC =================
-  const filteredReports = reports.filter((report) => {
-    const matchesSearch =
-      report.reporter.name.toLowerCase().includes(search.toLowerCase()) ||
-      report.reporter.username.toLowerCase().includes(search.toLowerCase()) ||
-      report.vehicle.plate.toLowerCase().includes(search.toLowerCase()) ||
-      report.violation.toLowerCase().includes(search.toLowerCase());
+      setReports(formatted);
+    } catch (err) {
+      if (err.message === "NO_TOKEN") {
+        navigate("/");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const matchesStatus =
-      statusFilter === "All" || report.status === statusFilter;
+  // ================= DELETE =================
+  const handleDelete = async (id) => {
+    try {
+      const { res } = await deleteReport(id);
 
-    return matchesSearch && matchesStatus;
-  });
+      if (!res.ok) return;
 
+      setReports((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      if (err.message === "NO_TOKEN") {
+        navigate("/");
+      }
+    }
+  };
+
+  // ================= STATUS STYLE =================
   const getStatusStyle = (status) => {
     if (status === "Accepted") return "bg-[#E0F2FE] text-[#0369A1]";
     if (status === "Pending") return "bg-[#FEF9C3] text-[#CA8A04]";
@@ -141,9 +143,6 @@ export default function Reports() {
             <h2 className="text-lg font-semibold text-[#0F172A]">
               Reports List
             </h2>
-            <p className="text-sm text-[#64748B] mt-1">
-              {filteredReports.length} total results
-            </p>
           </div>
         </div>
 
@@ -163,7 +162,7 @@ export default function Reports() {
             </thead>
 
             <tbody>
-              {filteredReports.map((report) => (
+              {reports.map((report) => (
                 <tr
                   key={report.id}
                   className="border-b border-[#F1F5F9] hover:bg-[#F8FAFC] transition"
@@ -230,7 +229,10 @@ export default function Reports() {
                         <Eye size={15} className="text-[#2460B9]" />
                       </button>
 
-                      <button className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#FEE2E2] hover:bg-[#FECACA] transition">
+                      <button
+                        onClick={() => handleDelete(report.id)}
+                        className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#FEE2E2] hover:bg-[#FECACA] transition"
+                      >
                         <Trash2 size={15} className="text-[#EF4444]" />
                       </button>
                     </div>
@@ -238,10 +240,10 @@ export default function Reports() {
                 </tr>
               ))}
 
-              {filteredReports.length === 0 && (
+              {reports.length === 0 && (
                 <tr>
                   <td colSpan="7" className="text-center py-10 text-[#64748B]">
-                    No reports found.
+                    {loading ? "Loading..." : "No reports found."}
                   </td>
                 </tr>
               )}

@@ -18,8 +18,6 @@ export default function Home() {
     { value: 10, label: "Sat" },
   ];
 
-  // ✅ values are now "counts" (numbers), not percentages
-  // (You can change these to real counts later, UI will still work perfectly)
   const reportBreakdown = [
     { value: 490, color: "#5DADE2", label: "Accepted" },
     { value: 250, color: "#F8B44C", label: "Pending" },
@@ -43,8 +41,12 @@ export default function Home() {
           className="px-5 pb-24 rounded-b-[40px] relative"
         >
           <View className="flex-row justify-end mt-4">
-            <Pressable onPress={() => router.push("profile")}>
-              <Ionicons name="settings-outline" size={24} color="#E2E8F0" />
+            <Pressable onPress={() => router.push("notifications")}>
+              <Ionicons
+                name="notifications-outline"
+                size={24}
+                color="#E2E8F0"
+              />
             </Pressable>
           </View>
 
@@ -152,7 +154,6 @@ export default function Home() {
               />
             </View>
 
-            {/* ✅ UPDATED LEGEND: label on LEFT, number on RIGHT */}
             <View className="mt-8">
               {reportBreakdown.map((item, index) => (
                 <View

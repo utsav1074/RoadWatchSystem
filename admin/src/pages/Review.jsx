@@ -1,42 +1,44 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { getReportById, reviewReport } from "../services/reviewService";
 
 export default function ReportReview() {
   const navigate = useNavigate();
+  const { id } = useParams();
 
-  const report = {
-    id: "10",
-    submitted: "Mar 3, 2026 • 09:42 PM",
-    status: "Pending",
-
-    plate: "BA-2-PA-1234",
-    vehicleType: "Car",
-    violation: "Speeding",
-    latitude: 27.717245,
-    longitude: 85.32396,
-
-    reporterName: "Ahmed Khan",
-    reporterUsername: "@ahmedk",
-
-    linkedUser: "Fatima Ali (@fatima.ali)",
-
-    ownerName: "Fatima Ali",
-    ownerEmail: "fatima@gmail.com",
-    ownerPhone: "+977-9800000000",
-    registeredDate: "2024-11-18",
-
-    description:
-      "Vehicle was observed speeding near the main intersection. Plate clearly visible. Supporting image attached.",
-
-    plateImage:
-      "https://images.unsplash.com/photo-1525609004556-c46c7d6cf023?auto=format&fit=crop&w=1600&q=80",
-    supportImage:
-      "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1600&q=80",
-  };
-
-  const [status, setStatus] = useState(report.status);
+  const [report, setReport] = useState(null);
+  const [status, setStatus] = useState("Pending");
   const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  // ================= LOAD REPORT =================
+  useEffect(() => {
+    loadReport();
+  }, []);
+
+  const loadReport = async () => {
+    try {
+      const data = await getReportById(id);
+
+      setReport(data);
+
+      // normalize status
+      const normalized =
+        data.report_status === "accepted"
+          ? "Accepted"
+          : data.report_status === "rejected"
+            ? "Rejected"
+            : "Pending";
+
+      setStatus(normalized);
+    } catch (err) {
+      alert(err.message);
+      navigate(-1);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const badgeStyle =
     status === "Accepted"
@@ -44,6 +46,31 @@ export default function ReportReview() {
       : status === "Rejected"
         ? "bg-rose-100 text-rose-700"
         : "bg-amber-100 text-amber-700";
+
+  // ================= HANDLE REVIEW =================
+  const handleSubmit = async (finalStatus) => {
+    try {
+      await reviewReport(id, finalStatus, notes);
+
+      setStatus(finalStatus);
+
+      alert("Review submitted successfully");
+
+      navigate(-1);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!report) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-20">
@@ -66,11 +93,11 @@ export default function ReportReview() {
               </h1>
 
               <p className="text-sm text-slate-600 mt-3 font-medium">
-                Report ID - {report.id}
+                Report ID - {report.report_id}
               </p>
 
               <p className="text-sm text-slate-500">
-                Submitted {report.submitted}
+                Submitted {new Date(report.report_date).toLocaleString()}
               </p>
             </div>
 
@@ -84,13 +111,13 @@ export default function ReportReview() {
           {/* IMAGES */}
           <div className="grid md:grid-cols-2 gap-8">
             <img
-              src={report.plateImage}
+              src={`${report.plate_image}`}
               alt="Plate"
               className="rounded-2xl h-72 w-full object-cover border border-slate-200"
             />
 
             <img
-              src={report.supportImage}
+              src={`${report.support_image}`}
               alt="Support"
               className="rounded-2xl h-72 w-full object-cover border border-slate-200"
             />
@@ -100,8 +127,8 @@ export default function ReportReview() {
           <Table
             title="Reporter Information"
             data={{
-              "Full Name": report.reporterName,
-              Username: report.reporterUsername,
+              "Full Name": report.reporter_name,
+              Username: report.reporter_username,
             }}
           />
 
@@ -109,13 +136,14 @@ export default function ReportReview() {
           <Table
             title="Vehicle Information"
             data={{
-              "License Plate": report.plate,
-              "Vehicle Type": report.vehicleType,
-              "Owner Name": report.ownerName,
-              Email: report.ownerEmail,
-              Phone: report.ownerPhone,
-              "Registered Date": report.registeredDate,
-              "Linked User": report.linkedUser,
+              "License Plate": report.vehicle_number,
+              "Owner Name": report.owner_name,
+              Email: report.owner_email,
+              Phone: report.owner_phone,
+              "Registered Date": report.registered_date,
+              "Linked User": report.owner_username
+                ? `${report.owner_full_name} (@${report.owner_username})`
+                : "Not Linked",
             }}
           />
 
@@ -123,7 +151,7 @@ export default function ReportReview() {
           <Table
             title="Violation Details"
             data={{
-              "Violation Type": report.violation,
+              "Violation Type": report.violation_type,
               Location: `${report.latitude}, ${report.longitude}`,
               Description: report.description,
             }}
@@ -146,14 +174,14 @@ export default function ReportReview() {
 
             <div className="flex gap-4 mt-6">
               <button
-                onClick={() => setStatus("Accepted")}
+                onClick={() => handleSubmit("Accepted")}
                 className="px-6 py-3 rounded-xl bg-[#2460B9] text-white text-base font-medium hover:bg-[#1f54a3] transition-colors"
               >
                 Accept Report
               </button>
 
               <button
-                onClick={() => setStatus("Rejected")}
+                onClick={() => handleSubmit("Rejected")}
                 className="px-6 py-3 rounded-xl border border-gray-300 text-gray-700 text-base font-medium hover:bg-gray-100 transition-colors"
               >
                 Reject

@@ -55,6 +55,13 @@ export default function Login() {
         return;
       }
 
+      // ✅ ONLY USER ALLOWED
+      if (data.role !== "user") {
+        setIsError(true);
+        setMessage("Access denied. Users only.");
+        return;
+      }
+
       await AsyncStorage.setItem("token", data.token);
 
       router.replace("/home");
