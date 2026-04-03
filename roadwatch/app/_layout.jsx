@@ -1,15 +1,21 @@
 import "../global.css";
 import { Stack } from "expo-router";
+import GlobalNotificationHandler from "../components/GlobalNotificationHandler";
 
 export default function RootLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {/* Auth Screens */}
-      <Stack.Screen name="index" />
-      <Stack.Screen name="register" />
+    <>
+      {/* GLOBAL NOTIFICATION HANDLER */}
+      <GlobalNotificationHandler />
 
-      {/* User Tabs */}
-      <Stack.Screen name="(tabs)" />
-    </Stack>
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* Auth Screens */}
+        <Stack.Screen name="index" />
+        <Stack.Screen name="register" />
+
+        {/* User Tabs */}
+        <Stack.Screen name="(tabs)" />
+      </Stack>
+    </>
   );
 }

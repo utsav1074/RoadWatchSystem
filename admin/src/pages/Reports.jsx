@@ -87,11 +87,12 @@ export default function Reports() {
   };
 
   // ================= STATUS STYLE =================
-  const getStatusStyle = (status) => {
-    if (status === "Accepted") return "bg-[#E0F2FE] text-[#0369A1]";
-    if (status === "Pending") return "bg-[#FEF9C3] text-[#CA8A04]";
-    if (status === "Rejected") return "bg-[#FEE2E2] text-[#B91C1C]";
-  };
+  const getStatusStyle = (status) =>
+    status === "Accepted"
+      ? "bg-[#E0F2FE] text-[#0369A1]"
+      : status === "Rejected"
+        ? "bg-[#FEE2E2] text-[#B91C1C]"
+        : "bg-[#FEF9C3] text-[#CA8A04]";
 
   return (
     <div className="min-h-screen bg-[#F6F9FE] py-14">

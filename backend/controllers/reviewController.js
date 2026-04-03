@@ -13,6 +13,13 @@ const reviewReport = (req, res) => {
 
   handleReview(id, status, notes || "", (err) => {
     if (err) {
+      // ✅ HANDLE ALREADY REVIEWED ERROR
+      if (err.message === "Report already reviewed") {
+        return res.status(400).json({
+          message: "This report has already been reviewed.",
+        });
+      }
+
       return res.status(500).json({
         message: "Review failed.",
       });

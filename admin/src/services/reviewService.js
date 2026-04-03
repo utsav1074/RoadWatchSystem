@@ -28,14 +28,14 @@ export const getReportById = async (id) => {
     throw new Error(data.message || "Failed to fetch report");
   }
 
-  return data[0]; // backend returns array
+  return data;
 };
 
 // ================= REVIEW REPORT =================
 export const reviewReport = async (reportId, status, notes) => {
   const headers = getAuthHeader();
 
-  const res = await fetch(`${BASE_URL}/admin/reports/${reportId}`, {
+  const res = await fetch(`${BASE_URL}/admin/reports/${reportId}/review`, {
     method: "PATCH",
     headers: {
       ...headers,

@@ -12,13 +12,15 @@ const authRoutes = require("./routes/authRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const adminReportRoutes = require("./routes/adminReportRoutes");
-const reviewRoutes = require("./routes/reviewRoutes"); // ✅ NEW
+const reviewRoutes = require("./routes/reviewRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 app.use("/api", authRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api", reportRoutes);
 app.use("/api", adminReportRoutes);
-app.use("/api", reviewRoutes); // ✅ NEW
+app.use("/api", reviewRoutes);
+app.use("/api", notificationRoutes);
 
 app.get("/", (req, res) => {
   res.send("Backend running");

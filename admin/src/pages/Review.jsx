@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { FILE_URL } from "../config/api";
 import { getReportById, reviewReport } from "../services/reviewService";
+import LocationActions from "../components/LocationActions";
 
 export default function ReportReview() {
   const navigate = useNavigate();
@@ -12,7 +14,9 @@ export default function ReportReview() {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // ================= LOAD REPORT =================
+  //  NEW STATE FOR POPUP
+  const [selectedImage, setSelectedImage] = useState(null);
+
   useEffect(() => {
     loadReport();
   }, []);
@@ -22,8 +26,8 @@ export default function ReportReview() {
       const data = await getReportById(id);
 
       setReport(data);
+      setNotes(data.review_notes || "");
 
-      // normalize status
       const normalized =
         data.report_status === "accepted"
           ? "Accepted"
@@ -47,15 +51,17 @@ export default function ReportReview() {
         ? "bg-rose-100 text-rose-700"
         : "bg-amber-100 text-amber-700";
 
-  // ================= HANDLE REVIEW =================
   const handleSubmit = async (finalStatus) => {
+    const confirmAction = window.confirm(
+      `Are you sure you want to ${finalStatus.toLowerCase()} this report?`,
+    );
+
+    if (!confirmAction) return;
+
     try {
       await reviewReport(id, finalStatus, notes);
-
       setStatus(finalStatus);
-
       alert("Review submitted successfully");
-
       navigate(-1);
     } catch (err) {
       alert(err.message);
@@ -111,15 +117,21 @@ export default function ReportReview() {
           {/* IMAGES */}
           <div className="grid md:grid-cols-2 gap-8">
             <img
-              src={`${report.plate_image}`}
+              src={`${FILE_URL}${report.plate_image}`}
               alt="Plate"
-              className="rounded-2xl h-72 w-full object-cover border border-slate-200"
+              onClick={() =>
+                setSelectedImage(`${FILE_URL}${report.plate_image}`)
+              }
+              className="rounded-2xl h-72 w-full object-cover border border-slate-200 cursor-pointer"
             />
 
             <img
-              src={`${report.support_image}`}
+              src={`${FILE_URL}${report.support_image}`}
               alt="Support"
-              className="rounded-2xl h-72 w-full object-cover border border-slate-200"
+              onClick={() =>
+                setSelectedImage(`${FILE_URL}${report.support_image}`)
+              }
+              className="rounded-2xl h-72 w-full object-cover border border-slate-200 cursor-pointer"
             />
           </div>
 
@@ -140,7 +152,9 @@ export default function ReportReview() {
               "Owner Name": report.owner_name,
               Email: report.owner_email,
               Phone: report.owner_phone,
-              "Registered Date": report.registered_date,
+              "Registered Date": new Date(
+                report.registered_date,
+              ).toLocaleDateString(),
               "Linked User": report.owner_username
                 ? `${report.owner_full_name} (@${report.owner_username})`
                 : "Not Linked",
@@ -157,32 +171,37 @@ export default function ReportReview() {
             }}
           />
 
+          {/* Location */}
+          <LocationActions
+            latitude={report.latitude}
+            longitude={report.longitude}
+          />
+
           {/* ADMIN REVIEW */}
           <div className="border-t border-slate-200 pt-10">
-            <div>
-              <h3 className="text-xl font-semibold text-slate-900">
-                Admin Review Notes
-              </h3>
+            <h3 className="text-xl font-semibold text-slate-900">
+              Admin Review Notes
+            </h3>
 
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Write internal review notes..."
-                className="w-full mt-4 h-32 rounded-xl border border-slate-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-200"
-              />
-            </div>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full mt-4 h-32 rounded-xl border border-slate-300 px-4 py-3 text-sm"
+            />
 
             <div className="flex gap-4 mt-6">
               <button
                 onClick={() => handleSubmit("Accepted")}
-                className="px-6 py-3 rounded-xl bg-[#2460B9] text-white text-base font-medium hover:bg-[#1f54a3] transition-colors"
+                disabled={status !== "Pending"}
+                className="px-6 py-3 rounded-xl text-white bg-[#2460B9]"
               >
                 Accept Report
               </button>
 
               <button
                 onClick={() => handleSubmit("Rejected")}
-                className="px-6 py-3 rounded-xl border border-gray-300 text-gray-700 text-base font-medium hover:bg-gray-100 transition-colors"
+                disabled={status !== "Pending"}
+                className="px-6 py-3 rounded-xl border border-gray-300"
               >
                 Reject
               </button>
@@ -190,6 +209,32 @@ export default function ReportReview() {
           </div>
         </div>
       </div>
+
+      {/* ✅ POPUP */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
+            {/* BACK BUTTON */}
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-4 -left-120 text-white flex gap-2"
+            >
+              <ArrowLeft size={20} />
+              Back
+            </button>
+
+            {/* ORIGINAL IMAGE */}
+            <img
+              src={selectedImage}
+              alt="Full"
+              className="max-h-[90vh] max-w-[90vw] object-contain rounded-xl"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -197,22 +242,14 @@ export default function ReportReview() {
 function Table({ title, data }) {
   return (
     <div>
-      <h3 className="text-lg font-semibold text-slate-900 mb-5 tracking-tight">
-        {title}
-      </h3>
+      <h3 className="text-lg font-semibold text-slate-900 mb-5">{title}</h3>
 
       <div className="border border-slate-200 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <tbody>
             {Object.entries(data).map(([label, value]) => (
-              <tr
-                key={label}
-                className="border-t border-slate-200 first:border-0 hover:bg-slate-50 transition"
-              >
-                <td className="px-6 py-4 text-slate-500 font-medium w-1/3">
-                  {label}
-                </td>
-
+              <tr key={label} className="border-t border-slate-200">
+                <td className="px-6 py-4 text-slate-500 w-1/3">{label}</td>
                 <td className="px-6 py-4 font-semibold text-slate-800">
                   {value}
                 </td>
