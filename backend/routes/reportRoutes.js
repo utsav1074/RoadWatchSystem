@@ -5,7 +5,10 @@ const path = require("path");
 const fs = require("fs");
 
 const verifyToken = require("../middleware/authMiddleware");
-const { createReport } = require("../controllers/reportController");
+const {
+  createReport,
+  verifyPlateImage,
+} = require("../controllers/reportController");
 
 // ================= ENSURE FOLDER =================
 const ensureDir = (dir) => {
@@ -14,18 +17,26 @@ const ensureDir = (dir) => {
   }
 };
 
-// ================= MULTER CONFIG =================
-const storage = multer.diskStorage({
+// ================= FILE FILTER =================
+const fileFilter = (req, file, cb) => {
+  const allowedExtensions = /jpg|jpeg|png|webp/;
+  const extensionOk = allowedExtensions.test(
+    path.extname(file.originalname).toLowerCase(),
+  );
+  const mimeOk = /^image\/(jpeg|jpg|png|webp)$/.test(file.mimetype);
+
+  if (extensionOk && mimeOk) {
+    return cb(null, true);
+  }
+
+  cb(new Error("Only image files are allowed."));
+};
+
+// ================= STORAGE =================
+const tempStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    let dir = "uploads/";
-
-    if (file.fieldname === "plateImage") {
-      dir = "uploads/plateImages/";
-    } else if (file.fieldname === "supportImage") {
-      dir = "uploads/supportImages/";
-    }
-
-    ensureDir(dir); // auto-create folder
+    const dir = "uploads/temp/";
+    ensureDir(dir);
     cb(null, dir);
   },
   filename: (req, file, cb) => {
@@ -36,22 +47,45 @@ const storage = multer.diskStorage({
   },
 });
 
-const fileFilter = (req, file, cb) => {
-  const allowed = /jpg|jpeg|png|webp/;
-  const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-  const mime = allowed.test(file.mimetype);
+const reportStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    let dir = "uploads/temp/";
 
-  if (ext && mime) return cb(null, true);
-  cb(new Error("Only image files are allowed."));
-};
+    if (file.fieldname === "plateImage") {
+      dir = "uploads/plateImages/";
+    }
 
-const upload = multer({ storage, fileFilter });
+    if (file.fieldname === "supportImage") {
+      dir = "uploads/supportImages/";
+    }
 
-// ================= ROUTE =================
+    ensureDir(dir);
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}_${file.fieldname}${path.extname(
+      file.originalname,
+    )}`;
+    cb(null, uniqueName);
+  },
+});
+
+const verifyUpload = multer({ storage: tempStorage, fileFilter });
+const reportUpload = multer({ storage: reportStorage, fileFilter });
+
+// ================= VERIFY PLATE IMAGE ONLY =================
+router.post(
+  "/report/verify-plate",
+  verifyToken,
+  verifyUpload.single("plateImage"),
+  verifyPlateImage,
+);
+
+// ================= CREATE REPORT =================
 router.post(
   "/report",
   verifyToken,
-  upload.fields([
+  reportUpload.fields([
     { name: "plateImage", maxCount: 1 },
     { name: "supportImage", maxCount: 1 },
   ]),

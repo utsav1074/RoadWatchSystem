@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -16,14 +16,12 @@ import DropdownField from "../../components/DropdownField";
 import LiveImageBox from "../../components/LiveImageBox";
 import Map from "../../components/Map";
 
-import { submitReport } from "../../services/reportService";
+import { submitReport, verifyPlateImage } from "../../services/reportService";
 
 export default function Report() {
   const router = useRouter();
 
-  // =========================
-  // STATE VARIABLES
-  // =========================
+  // ================= STATE =================
   const [vehicleType, setVehicleType] = useState("");
   const [violationType, setViolationType] = useState("");
   const [description, setDescription] = useState("");
@@ -33,9 +31,29 @@ export default function Report() {
   const [platePhoto, setPlatePhoto] = useState(null);
   const [evidencePhoto, setEvidencePhoto] = useState(null);
 
-  // =========================
-  // CAMERA PERMISSION HANDLER
-  // =========================
+  const [plateCheckStatus, setPlateCheckStatus] = useState("idle");
+  const [plateCheckMessage, setPlateCheckMessage] = useState("");
+  const [matchedPlate, setMatchedPlate] = useState("");
+
+  // ================= NORMALIZE =================
+  const normalizePlate = (value = "") =>
+    value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+  // ================= RESET =================
+  const resetForm = () => {
+    setPlate("");
+    setVehicleType("");
+    setViolationType("");
+    setDescription("");
+    setSelectedLocation(null);
+    setPlatePhoto(null);
+    setEvidencePhoto(null);
+    setPlateCheckStatus("idle");
+    setPlateCheckMessage("");
+    setMatchedPlate("");
+  };
+
+  // ================= CAMERA =================
   const requestCamera = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
 
@@ -43,12 +61,10 @@ export default function Report() {
       Alert.alert("Permission Required", "Camera access is needed.");
       return false;
     }
+
     return true;
   };
 
-  // =========================
-  // OPEN CAMERA & CAPTURE IMAGE
-  // =========================
   const takePhoto = async () => {
     const ok = await requestCamera();
     if (!ok) return null;
@@ -59,36 +75,119 @@ export default function Report() {
     });
 
     if (result.canceled) return null;
-
     return result.assets?.[0] ?? null;
   };
 
+  // ================= VERIFY PLATE =================
+  const checkPlateImage = async (imageAsset, enteredPlate) => {
+    if (!imageAsset) return;
+
+    try {
+      setPlateCheckStatus("checking");
+      setPlateCheckMessage("Checking plate...");
+      setMatchedPlate("");
+
+      const formData = new FormData();
+      formData.append("plate", enteredPlate);
+      formData.append("plateImage", {
+        uri: imageAsset.uri,
+        name: `plate_${Date.now()}.jpg`,
+        type: "image/jpeg",
+      });
+
+      const { response, data } = await verifyPlateImage(formData);
+
+      const extracted = data?.extractedPlate || "";
+      setMatchedPlate(extracted);
+
+      if (!response.ok) {
+        setPlateCheckStatus("not_matched");
+        setPlateCheckMessage(
+          data?.message || "❌ Plate verification failed. Try again.",
+        );
+        return;
+      }
+
+      if (data?.matched) {
+        setPlateCheckStatus("matched");
+        setPlateCheckMessage("✔ Plate matched successfully");
+      } else {
+        setPlateCheckStatus("not_matched");
+        setPlateCheckMessage(
+          data?.message || "❌ Plate did not match. Please retake the image.",
+        );
+      }
+    } catch (err) {
+      if (err.message === "NO_TOKEN") {
+        Alert.alert("Session Expired", "Please login again.");
+        router.replace("/");
+        return;
+      }
+
+      setPlateCheckStatus("not_matched");
+      setPlateCheckMessage("❌ Plate verification failed. Try again.");
+      setMatchedPlate("");
+    }
+  };
+
+  // ================= CAPTURE =================
   const capturePlate = async () => {
     const img = await takePhoto();
     if (!img) return;
+
     setPlatePhoto(img);
+    await checkPlateImage(img, plate);
   };
 
   const captureEvidence = async () => {
     const img = await takePhoto();
     if (!img) return;
+
     setEvidencePhoto(img);
   };
 
-  // =========================
-  // SUBMIT HANDLER
-  // =========================
+  // ================= AUTO RECHECK UI ONLY =================
+  useEffect(() => {
+    if (!platePhoto || !matchedPlate) return;
+
+    const typed = normalizePlate(plate.trim());
+    const detected = normalizePlate(matchedPlate);
+
+    if (!typed) {
+      setPlateCheckStatus("idle");
+      setPlateCheckMessage("");
+      return;
+    }
+
+    if (typed === detected) {
+      setPlateCheckStatus("matched");
+      setPlateCheckMessage("✔ Plate matched successfully");
+    } else {
+      setPlateCheckStatus("not_matched");
+      setPlateCheckMessage("❌ Plate did not match. Please retake the image.");
+    }
+  }, [plate, matchedPlate, platePhoto]);
+
+  // ================= REMOVE =================
+  const removePlateImage = () => {
+    setPlatePhoto(null);
+    setPlateCheckStatus("idle");
+    setPlateCheckMessage("");
+    setMatchedPlate("");
+  };
+
+  // ================= SUBMIT =================
   const handleSubmit = async () => {
     try {
       const formData = new FormData();
 
-      formData.append("plate", plate.trim().toUpperCase());
+      formData.append("plate", plate);
       formData.append("violationType", violationType);
       formData.append("description", description);
 
       if (selectedLocation) {
-        formData.append("latitude", selectedLocation.latitude);
-        formData.append("longitude", selectedLocation.longitude);
+        formData.append("latitude", String(selectedLocation.latitude));
+        formData.append("longitude", String(selectedLocation.longitude));
       }
 
       if (platePhoto) {
@@ -110,27 +209,20 @@ export default function Report() {
       const { response, data } = await submitReport(formData);
 
       if (!response.ok) {
-        Alert.alert("Error", data.message || "Failed to submit.");
+        Alert.alert("Error", data?.message || "Failed to submit.");
         return;
       }
 
-      Alert.alert("Success", data.message);
-
-      // RESET FORM
-      setPlate("");
-      setVehicleType("");
-      setViolationType("");
-      setDescription("");
-      setSelectedLocation(null);
-      setPlatePhoto(null);
-      setEvidencePhoto(null);
+      Alert.alert("Success", data?.message || "Report submitted successfully.");
+      resetForm();
     } catch (err) {
       if (err.message === "NO_TOKEN") {
         Alert.alert("Session Expired", "Please login again.");
         router.replace("/");
-      } else {
-        Alert.alert("Error", "Server error.");
+        return;
       }
+
+      Alert.alert("Error", "Server error.");
     }
   };
 
@@ -169,6 +261,7 @@ export default function Report() {
               onChangeText={setPlate}
               placeholder="ABC-1234"
               placeholderTextColor="#9CA3AF"
+              autoCapitalize="characters"
               className="rounded-2xl px-4 py-4 border border-slate-300 bg-white"
             />
           </View>
@@ -233,8 +326,30 @@ export default function Report() {
               image={platePhoto}
               onCapture={capturePlate}
               onReplace={capturePlate}
-              onRemove={() => setPlatePhoto(null)}
+              onRemove={removePlateImage}
             />
+
+            {!!plateCheckMessage && (
+              <>
+                <Text
+                  className={`mt-3 text-sm ${
+                    plateCheckStatus === "checking"
+                      ? "text-slate-500"
+                      : plateCheckStatus === "matched"
+                        ? "text-emerald-600"
+                        : "text-red-500"
+                  }`}
+                >
+                  {plateCheckMessage}
+                </Text>
+
+                {!!matchedPlate && (
+                  <Text className="text-xs text-slate-500 mt-1">
+                    Detected Plate: {matchedPlate}
+                  </Text>
+                )}
+              </>
+            )}
           </View>
 
           <View className="mb-8">
