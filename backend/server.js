@@ -14,6 +14,11 @@ const reportRoutes = require("./routes/reportRoutes");
 const adminReportRoutes = require("./routes/adminReportRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const adminUserRoutes = require("./routes/adminUserRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
+const homeRoutes = require("./routes/homeRoutes");
+const historyRoutes = require("./routes/historyRoutes");
+const fineRoutes = require("./routes/fineRoutes");
 
 app.use("/api", authRoutes);
 app.use("/api/profile", profileRoutes);
@@ -21,6 +26,11 @@ app.use("/api", reportRoutes);
 app.use("/api", adminReportRoutes);
 app.use("/api", reviewRoutes);
 app.use("/api", notificationRoutes);
+app.use("/api", adminUserRoutes);
+app.use("/api", dashboardRoutes);
+app.use("/api", homeRoutes);
+app.use("/api", historyRoutes);
+app.use("/api", fineRoutes);
 
 app.get("/", (req, res) => {
   res.send("Backend running");

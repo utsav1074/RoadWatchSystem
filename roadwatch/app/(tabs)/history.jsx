@@ -1,45 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { View, Text, ScrollView, TextInput, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { getHistory } from "../../services/historyService";
 
 export default function History() {
   const router = useRouter();
 
   const [activeFilter, setActiveFilter] = useState("All");
   const [search, setSearch] = useState("");
-
-  const reports = [
-    {
-      id: 1,
-      plate: "BAA-1234",
-      violation: "Illegal Parking",
-      date: "Jan 21, 2026",
-      status: "Pending",
-    },
-    {
-      id: 2,
-      plate: "BAG-9087",
-      violation: "Speeding",
-      date: "Jan 19, 2026",
-      status: "Accepted",
-    },
-    {
-      id: 3,
-      plate: "KAA-7788",
-      violation: "Red Light Violation",
-      date: "Jan 18, 2026",
-      status: "Rejected",
-    },
-    {
-      id: 4,
-      plate: "KAA-7760",
-      violation: "Red Light Violation",
-      date: "Jan 18, 2026",
-      status: "Accepted",
-    },
-  ];
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const filters = ["All", "Pending", "Accepted", "Rejected"];
 
@@ -68,11 +40,54 @@ export default function History() {
     }
   };
 
+  const loadHistory = async () => {
+    try {
+      const { response, data } = await getHistory();
+
+      if (!response.ok) return;
+
+      const formattedReports = data.map((report) => ({
+        id: report.report_id,
+        plate: report.vehicle_number || "N/A",
+        violation: report.violation_type,
+        date: new Date(report.report_date).toLocaleDateString(),
+        status:
+          report.report_status === "accepted"
+            ? "Accepted"
+            : report.report_status === "rejected"
+              ? "Rejected"
+              : "Pending",
+      }));
+
+      setReports(formattedReports);
+    } catch (error) {
+      if (error.message === "NO_TOKEN") {
+        router.push("/");
+      }
+      console.log("History Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const filteredReports = reports.filter((report) => {
+    const matchesSearch = report.plate
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    const matchesStatus =
+      activeFilter === "All" || report.status === activeFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <SafeAreaView className="flex-1 bg-[#FBFCFE]" edges={["top"]}>
-      {/* ================= WHITE TOP CONTAINER ================= */}
       <View className="bg-white px-5 py-6 border-b border-slate-200">
-        {/* Header Row */}
         <View className="flex-row items-center mb-6">
           <Pressable onPress={() => router.push("/home")} className="mr-3">
             <Ionicons name="chevron-back" size={24} color="#0F172A" />
@@ -83,7 +98,6 @@ export default function History() {
           </Text>
         </View>
 
-        {/* Search Bar */}
         <View className="mb-5">
           <View className="flex-row items-center rounded-xl px-3 border border-slate-300">
             <Ionicons
@@ -102,7 +116,6 @@ export default function History() {
           </View>
         </View>
 
-        {/* Filter Chips */}
         <View className="flex-row">
           {filters.map((filter) => {
             const isActive = activeFilter === filter;
@@ -128,69 +141,75 @@ export default function History() {
         </View>
       </View>
 
-      {/* ================= REPORT LIST ================= */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
         className="px-5 pt-6"
       >
-        {reports.map((report) => {
-          const statusStyle = getStatusStyle(report.status);
+        {loading ? (
+          <Text className="text-center text-slate-500 mt-10">Loading...</Text>
+        ) : filteredReports.length === 0 ? (
+          <Text className="text-center text-slate-500 mt-10">
+            No reports found.
+          </Text>
+        ) : (
+          filteredReports.map((report) => {
+            const statusStyle = getStatusStyle(report.status);
 
-          return (
-            <View
-              key={report.id}
-              className="bg-white rounded-3xl p-5 shadow-xl mb-5"
-            >
-              {/* Top Row */}
-              <View className="flex-row justify-between items-center mb-3">
-                <Text className="text-lg font-semibold text-slate-900">
-                  {report.plate}
-                </Text>
+            return (
+              <View
+                key={report.id}
+                className="bg-white rounded-3xl p-5 shadow-xl mb-5"
+              >
+                <View className="flex-row justify-between items-center mb-3">
+                  <Text className="text-lg font-semibold text-slate-900">
+                    {report.plate}
+                  </Text>
 
-                <View
-                  className={`px-3 py-1 rounded-full flex-row items-center ${statusStyle.bg}`}
-                >
+                  <View
+                    className={`px-3 py-1 rounded-full flex-row items-center ${statusStyle.bg}`}
+                  >
+                    <Ionicons
+                      name={statusStyle.icon}
+                      size={14}
+                      color="#0F172A"
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text
+                      className={`text-xs font-semibold ${statusStyle.text}`}
+                    >
+                      {report.status}
+                    </Text>
+                  </View>
+                </View>
+
+                <View className="flex-row items-center mb-2">
                   <Ionicons
-                    name={statusStyle.icon}
-                    size={14}
-                    color="#0F172A"
-                    style={{ marginRight: 4 }}
+                    name="alert-circle-outline"
+                    size={16}
+                    color="#475569"
+                    style={{ marginRight: 6 }}
                   />
-                  <Text className={`text-xs font-semibold ${statusStyle.text}`}>
-                    {report.status}
+                  <Text className="text-slate-600 text-sm">
+                    {report.violation}
+                  </Text>
+                </View>
+
+                <View className="flex-row items-center">
+                  <Ionicons
+                    name="calendar-outline"
+                    size={16}
+                    color="#475569"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text className="text-slate-500 text-xs">
+                    Submitted on {report.date}
                   </Text>
                 </View>
               </View>
-
-              {/* Violation */}
-              <View className="flex-row items-center mb-2">
-                <Ionicons
-                  name="alert-circle-outline"
-                  size={16}
-                  color="#475569"
-                  style={{ marginRight: 6 }}
-                />
-                <Text className="text-slate-600 text-sm">
-                  {report.violation}
-                </Text>
-              </View>
-
-              {/* Date */}
-              <View className="flex-row items-center">
-                <Ionicons
-                  name="calendar-outline"
-                  size={16}
-                  color="#475569"
-                  style={{ marginRight: 6 }}
-                />
-                <Text className="text-slate-500 text-xs">
-                  Submitted on {report.date}
-                </Text>
-              </View>
-            </View>
-          );
-        })}
+            );
+          })
+        )}
       </ScrollView>
     </SafeAreaView>
   );

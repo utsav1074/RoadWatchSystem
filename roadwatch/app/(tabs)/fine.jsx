@@ -1,32 +1,42 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
+import { getFines } from "../../services/fineService";
+
 export default function Fine() {
   const router = useRouter();
 
   const [activeFilter, setActiveFilter] = useState("All");
+  const [fines, setFines] = useState([]);
 
-  const fines = [
-    {
-      id: 1,
-      plate: "BA-2-PA-1234",
-      violation: "Illegal Parking",
-      amount: "Rs 1,500",
-      date: "3/1/2026",
-      status: "Unpaid",
-    },
-    {
-      id: 2,
-      plate: "BA-5-PA-4311",
-      violation: "Running Red Light",
-      amount: "Rs 2,000",
-      date: "2/18/2026",
-      status: "Paid",
-    },
-  ];
+  // ================= FETCH FINES =================
+  useEffect(() => {
+    const loadFines = async () => {
+      try {
+        const { response, data } = await getFines();
+
+        if (response.ok) {
+          const formatted = data.map((f) => ({
+            id: f.fine_id,
+            plate: f.vehicle_number || "N/A",
+            violation: f.violation_type,
+            amount: `Rs ${f.fine_amount}`,
+            date: new Date(f.fine_issueDate).toLocaleDateString(),
+            status: f.fine_status === "paid" ? "Paid" : "Unpaid",
+          }));
+
+          setFines(formatted);
+        }
+      } catch (error) {
+        console.log("Fine error:", error);
+      }
+    };
+
+    loadFines();
+  }, []);
 
   const filters = ["All", "Paid", "Unpaid"];
 
@@ -54,9 +64,8 @@ export default function Fine() {
 
   return (
     <SafeAreaView className="flex-1 bg-[#FBFCFE]" edges={["top"]}>
-      {/* ================= TOP WHITE CONTAINER ================= */}
+      {/* ================= TOP ================= */}
       <View className="bg-white px-5 py-6 border-b border-slate-200">
-        {/* Header */}
         <View className="flex-row items-center mb-6">
           <Pressable onPress={() => router.push("/home")} className="mr-3">
             <Ionicons name="chevron-back" size={24} color="#0F172A" />
@@ -65,7 +74,6 @@ export default function Fine() {
           <Text className="text-xl font-semibold text-slate-900">My Fines</Text>
         </View>
 
-        {/* Filter Chips */}
         <View className="flex-row">
           {filters.map((filter) => {
             const isActive = activeFilter === filter;
@@ -93,12 +101,18 @@ export default function Fine() {
         </View>
       </View>
 
-      {/* ================= FINE LIST ================= */}
+      {/* ================= LIST ================= */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
         className="px-5 pt-6"
       >
+        {filteredFines.length === 0 && (
+          <Text className="text-center text-slate-500 mt-10">
+            No fines found
+          </Text>
+        )}
+
         {filteredFines.map((fine) => {
           const statusStyle = getStatusStyle(fine.status);
 
@@ -107,7 +121,6 @@ export default function Fine() {
               key={fine.id}
               className="bg-white rounded-3xl p-5 shadow-xl mb-5"
             >
-              {/* Plate + Status */}
               <View className="flex-row justify-between items-center mb-2">
                 <Text className="text-lg font-semibold text-slate-900">
                   {fine.plate}
@@ -120,12 +133,10 @@ export default function Fine() {
                 </View>
               </View>
 
-              {/* Violation */}
               <Text className="text-slate-600 text-sm mb-3">
                 {fine.violation}
               </Text>
 
-              {/* Amount + Issued Date */}
               <View className="flex-row justify-between">
                 <View>
                   <Text className="text-slate-500 text-xs">Amount</Text>
@@ -142,10 +153,14 @@ export default function Fine() {
                 </View>
               </View>
 
-              {/* Pay Button only for Unpaid */}
               {fine.status === "Unpaid" && (
                 <Pressable
-                  onPress={() => router.push("/pay")}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/pay",
+                      params: fine,
+                    })
+                  }
                   className="bg-slate-700 py-3 rounded-xl items-center mt-4"
                 >
                   <Text className="text-white font-semibold">Pay Now</Text>

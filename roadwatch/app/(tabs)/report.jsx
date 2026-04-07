@@ -35,6 +35,8 @@ export default function Report() {
   const [plateCheckMessage, setPlateCheckMessage] = useState("");
   const [matchedPlate, setMatchedPlate] = useState("");
 
+  const [loading, setLoading] = useState(false); // ✅ ADDED
+
   // ================= NORMALIZE =================
   const normalizePlate = (value = "") =>
     value.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -179,6 +181,8 @@ export default function Report() {
   // ================= SUBMIT =================
   const handleSubmit = async () => {
     try {
+      setLoading(true);
+
       const formData = new FormData();
 
       formData.append("plate", plate);
@@ -223,6 +227,8 @@ export default function Report() {
       }
 
       Alert.alert("Error", "Server error.");
+    } finally {
+      setLoading(false); // ✅ ADDED
     }
   };
 
@@ -367,10 +373,11 @@ export default function Report() {
 
           <Pressable
             onPress={handleSubmit}
+            disabled={loading} // ✅ ADDED
             className="rounded-3xl py-4 mb-3 items-center bg-slate-700"
           >
             <Text className="text-white text-lg font-semibold">
-              Submit Report
+              {loading ? "Submitting..." : "Submit Report"}
             </Text>
           </Pressable>
         </View>

@@ -2,7 +2,7 @@ const fs = require("fs");
 const fetch = require("node-fetch");
 
 // ================= GEMINI CONFIG =================
-const GEMINI_API_KEY = "AIzaSyD-tw_g3b3cNxkQrab-hWi6_Rq_aKTtrVc";
+const GEMINI_API_KEY = "AIzaSyD3i1mdzyY6_cLkQ4v9bD1Ddh-gR3SkVNU";
 const GEMINI_MODEL = "gemini-2.5-flash";
 
 // ================= NORMALIZE PLATE =================

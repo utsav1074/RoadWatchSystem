@@ -1,28 +1,53 @@
-import { View, Text, ScrollView, Pressable, Image } from "react-native";
+import { useEffect, useState } from "react";
+import { View, Text, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, Feather } from "@expo/vector-icons";
-import { BarChart, PieChart } from "react-native-gifted-charts";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { ActivityIndicator, Alert } from "react-native";
+
+import { getHome } from "../../services/homeService";
+import { getProfile } from "../../services/profileService";
 
 export default function Home() {
   const router = useRouter();
 
-  const weeklyData = [
-    { value: 8, label: "Sun" },
-    { value: 12, label: "Mon" },
-    { value: 18, label: "Tue" },
-    { value: 9, label: "Wed" },
-    { value: 22, label: "Thu" },
-    { value: 15, label: "Fri" },
-    { value: 10, label: "Sat" },
-  ];
+  const [homeData, setHomeData] = useState(null);
+  const [userName, setUserName] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const reportBreakdown = [
-    { value: 490, color: "#5DADE2", label: "Accepted" },
-    { value: 250, color: "#F8B44C", label: "Pending" },
-    { value: 300, color: "#FF7FA3", label: "Rejected" },
-  ];
+  // ================= FETCH DATA =================
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+
+      const { response, data } = await getHome();
+
+      if (!response.ok) {
+        Alert.alert("Error", "Failed to load data");
+        return;
+      }
+
+      setHomeData(data);
+
+      const profileRes = await getProfile();
+      if (profileRes.response.ok) {
+        setUserName(profileRes.data.user.fullName);
+      }
+    } catch (err) {
+      if (err.message === "NO_TOKEN") {
+        router.replace("/");
+      } else {
+        Alert.alert("Error", "Server error");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const cardShadow = {
     shadowColor: "#0F172A",
@@ -32,14 +57,22 @@ export default function Home() {
     elevation: 4,
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-[#FBFCFE]">
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#334155" />
+          <Text className="mt-3 text-slate-600">Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-[#FBFCFE]" edges={["top"]}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* ================= PREMIUM HEADER ================= */}
-        <LinearGradient
-          colors={["#0F172A", "#1E293B"]}
-          className="px-5 pb-24 rounded-b-[40px] relative"
-        >
+        {/* ================= HEADER ================= */}
+        <LinearGradient colors={["#0F172A", "#1E293B"]} className="px-5 h-60">
           <View className="flex-row justify-end mt-4">
             <Pressable onPress={() => router.push("notifications")}>
               <Ionicons
@@ -50,35 +83,17 @@ export default function Home() {
             </Pressable>
           </View>
 
-          <Text className="text-2xl font-bold text-white mt-8">RoadWatch</Text>
+          <Text className="text-2xl font-bold text-white mt-24">RoadWatch</Text>
           <Text className="text-slate-300 mt-1">Smart Traffic Monitoring</Text>
-
-          <View className="absolute left-5 -bottom-14">
-            <Image
-              source={{ uri: "https://i.pravatar.cc/150?img=12" }}
-              style={{
-                width: 95,
-                height: 95,
-                borderRadius: 50,
-                borderWidth: 4,
-                borderColor: "#F8FAFC",
-                shadowColor: "#000",
-                shadowOpacity: 0.3,
-                shadowRadius: 12,
-                shadowOffset: { width: 0, height: 6 },
-                elevation: 8,
-              }}
-            />
-          </View>
         </LinearGradient>
 
-        {/* ================= PROFILE INFO ================= */}
-        <View className="px-5 mt-20">
+        {/* ================= PROFILE ================= */}
+        <View className="px-5 mt-10">
           <Text className="text-xl font-semibold text-gray-900">
             Welcome back,
           </Text>
           <Text className="text-2xl font-bold text-gray-900 mt-1">
-            Utsav Basnyat
+            {userName || "User"}
           </Text>
         </View>
 
@@ -89,25 +104,25 @@ export default function Home() {
               {
                 icon: "document-text-outline",
                 color: "#3B82F6",
-                value: "128",
+                value: homeData?.totalReports || 0,
                 label: "Total Reports",
               },
               {
                 icon: "time-outline",
                 color: "#F59E0B",
-                value: "34",
+                value: homeData?.pendingReports || 0,
                 label: "Pending Reports",
               },
               {
                 icon: "checkmark-circle-outline",
                 color: "#10B981",
-                value: "79",
+                value: homeData?.verifiedReports || 0,
                 label: "Verified Reports",
               },
               {
                 icon: "wallet-outline",
                 color: "#EF4444",
-                value: "15",
+                value: homeData?.unpaidFines || 0,
                 label: "Unpaid Fines",
               },
             ].map((item, index) => (
@@ -133,86 +148,6 @@ export default function Home() {
                 <Text className="text-gray-500 text-sm mt-1">{item.label}</Text>
               </View>
             ))}
-          </View>
-        </View>
-
-        {/* ================= PIE CHART ================= */}
-        <View className="px-5 mt-6">
-          <View className="bg-white rounded-[28px] p-6" style={cardShadow}>
-            <Text className="text-lg font-semibold text-gray-900 mb-6">
-              Report Status Overview
-            </Text>
-
-            <View className="items-center">
-              <PieChart
-                data={reportBreakdown}
-                radius={105}
-                strokeWidth={1}
-                strokeColor="#FFFFFF"
-                showText={false}
-                focusOnPress
-              />
-            </View>
-
-            <View className="mt-8">
-              {reportBreakdown.map((item, index) => (
-                <View
-                  key={index}
-                  className="flex-row items-center justify-between mb-4"
-                >
-                  <View className="flex-row items-center">
-                    <View
-                      style={{
-                        width: 14,
-                        height: 14,
-                        borderRadius: 7,
-                        backgroundColor: item.color,
-                        marginRight: 10,
-                      }}
-                    />
-                    <Text className="text-sm font-medium text-gray-800">
-                      {item.label}
-                    </Text>
-                  </View>
-
-                  <Text className="text-sm font-semibold text-gray-900">
-                    {item.value}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        {/* ================= BAR CHART ================= */}
-        <View className="px-5 mt-8">
-          <View
-            className="bg-white rounded-[28px] p-4 overflow-hidden"
-            style={cardShadow}
-          >
-            <View className="flex-row justify-between items-center mt-2 mb-6 mx-3">
-              <Text className="text-lg font-semibold text-gray-900">
-                Weekly Reports
-              </Text>
-              <Text className="text-sm text-gray-400">Last 7 days</Text>
-            </View>
-
-            <BarChart
-              data={weeklyData.map((item) => ({
-                ...item,
-                frontColor: "#3B82F6",
-              }))}
-              height={190}
-              barWidth={18}
-              spacing={24}
-              rulesColor="#CBD5E1"
-              yAxisThickness={0}
-              xAxisThickness={0}
-              yAxisTextStyle={{ color: "#334155", fontSize: 13 }}
-              xAxisLabelTextStyle={{ color: "#1E293B", fontSize: 13 }}
-              noOfSections={5}
-              maxValue={50}
-            />
           </View>
         </View>
 
@@ -248,7 +183,7 @@ export default function Home() {
           </View>
         </View>
 
-        {/* ================= NEED HELP ================= */}
+        {/* ================= HELP ================= */}
         <View className="px-5 mt-8 mb-8">
           <View className="bg-white p-5 rounded-3xl" style={cardShadow}>
             <View className="flex-row items-center mb-4">

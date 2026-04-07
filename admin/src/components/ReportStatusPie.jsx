@@ -1,10 +1,16 @@
 import { PieChart, Pie, ResponsiveContainer, Tooltip } from "recharts";
 
-export default function ReportStatusPie({ statusData, COLORS }) {
-  // ✅ Add color directly into data (modern approach)
-  const coloredData = statusData.map((item, index) => ({
+export default function ReportStatusPie({
+  statusData = [],
+  COLORS = [],
+  loading = false,
+}) {
+  const safeData = Array.isArray(statusData) ? statusData : [];
+
+  const coloredData = safeData.map((item, index) => ({
     ...item,
-    fill: COLORS[index],
+    value: Number(item.value || 0),
+    fill: COLORS[index % COLORS.length],
   }));
 
   const total = coloredData.reduce((sum, item) => sum + item.value, 0);
@@ -16,28 +22,32 @@ export default function ReportStatusPie({ statusData, COLORS }) {
       </h2>
 
       <div className="h-56 flex justify-center items-center">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={coloredData}
-              dataKey="value"
-              nameKey="name"
-              outerRadius={90}
-              stroke="#FFFFFF"
-              strokeWidth={1}
-            />
-
-            <Tooltip
-              formatter={(value, name) => {
-                const percentage = ((value / total) * 100).toFixed(1);
-                return [`${percentage}%`, name];
-              }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+        {loading ? (
+          <div className="text-sm text-[#64748B]">Loading...</div>
+        ) : total === 0 ? (
+          <div className="text-sm text-[#64748B]">No data found.</div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={coloredData}
+                dataKey="value"
+                nameKey="name"
+                outerRadius={90}
+                stroke="#FFFFFF"
+                strokeWidth={1}
+              />
+              <Tooltip
+                formatter={(value, name) => {
+                  const percentage = ((Number(value) / total) * 100).toFixed(1);
+                  return [`${percentage}%`, name];
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
-      {/* Legend Section */}
       <div className="mt-6 space-y-3">
         {coloredData.map((item, index) => (
           <div

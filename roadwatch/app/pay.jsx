@@ -2,19 +2,21 @@ import { useState } from "react";
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 
 export default function Pay() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+
   const [selectedMethod, setSelectedMethod] = useState("eSewa");
 
-  // Temporary dummy fine (later connect real data)
+  // ================= GET DATA FROM ROUTER =================
   const fine = {
-    fineId: "10",
-    plate: "BA-2-PA-1234",
-    violation: "Illegal Parking",
-    amount: "Rs 1,500",
-    date: "3/1/2026",
+    fineId: params.id,
+    plate: params.plate,
+    violation: params.violation,
+    amount: params.amount,
+    date: params.date,
   };
 
   const methods = [
@@ -42,17 +44,16 @@ export default function Pay() {
       >
         {/* ===== FINE SUMMARY ===== */}
         <View className="bg-white rounded-3xl p-5 shadow-xl mb-6">
-          {/* LEFT SIDE */}
           <View>
             <Text className="text-xl font-bold mb-4">
               Fine ID - {fine.fineId}
             </Text>
+
             <Text className="text-base font-semibold text-slate-900">
               {fine.plate}
             </Text>
           </View>
 
-          {/* Violation */}
           <Text className="text-slate-600 text-sm mt-4 mb-3">
             {fine.violation}
           </Text>

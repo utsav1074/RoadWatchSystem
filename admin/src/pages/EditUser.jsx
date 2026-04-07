@@ -1,33 +1,104 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { getUser, updateUser } from "../services/adminUserService";
 
 export default function EditUser() {
   const navigate = useNavigate();
+  const { id } = useParams();
 
   const [form, setForm] = useState({
-    name: "Ahmed Khan",
-    username: "ahmedk",
-    email: "ahmed@gmail.com",
-    phone: "+92 300 1234567",
-    plate: "BA-2-PA-1234",
+    name: "",
+    username: "",
+    email: "",
+    phone: "",
+    plate: "",
   });
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // ================= LOAD USER =================
+  useEffect(() => {
+    loadUser();
+  }, [id]);
+
+  const loadUser = async () => {
+    try {
+      setLoading(true);
+
+      const { res, data } = await getUser(id);
+
+      if (!res.ok) {
+        alert(data?.message || "Failed to load user");
+        return;
+      }
+
+      setForm({
+        name: data?.full_name || "",
+        username: data?.username || "",
+        email: data?.email || "",
+        phone: data?.contact || "",
+        plate: data?.vehicle_numbers || "",
+      });
+    } catch (err) {
+      if (err.message === "NO_TOKEN") {
+        navigate("/");
+        return;
+      }
+
+      alert("Something went wrong while loading user");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ================= HANDLE CHANGE =================
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  // ================= SUBMIT =================
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Updated:", form);
-    navigate("/admin/users");
+
+    if (saving) return;
+
+    try {
+      setSaving(true);
+
+      const payload = {
+        name: form.name,
+        username: form.username,
+        email: form.email,
+        phone: form.phone,
+      };
+
+      const { res, data } = await updateUser(id, payload);
+
+      if (!res.ok) {
+        alert(data?.message || "Update failed");
+        return;
+      }
+
+      // go back to users page
+      navigate("/users");
+    } catch (err) {
+      if (err.message === "NO_TOKEN") {
+        navigate("/");
+        return;
+      }
+
+      alert("Something went wrong while updating");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#F6F9FE] flex items-start justify-center pt-10 px-6">
       <div className="w-full max-w-2xl">
-        {/* Back Button (same style as review page) */}
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-6"
@@ -36,12 +107,10 @@ export default function EditUser() {
           Back
         </button>
 
-        {/* ===== CARD ===== */}
         <form
           onSubmit={handleSubmit}
           className="bg-white rounded-3xl border border-[#E2E8F0] shadow-sm p-8 space-y-8"
         >
-          {/* ===== CARD HEADER ===== */}
           <div>
             <h1 className="text-xl font-semibold text-[#0F172A]">Edit User</h1>
             <p className="text-sm text-[#64748B] mt-1">
@@ -51,7 +120,6 @@ export default function EditUser() {
 
           <div className="h-px bg-[#E2E8F0]" />
 
-          {/* ===== ACCOUNT SECTION ===== */}
           <div>
             <div className="flex items-center gap-2 mb-6">
               <ShieldCheck size={18} className="text-[#2460B9]" />
@@ -61,7 +129,6 @@ export default function EditUser() {
             </div>
 
             <div className="grid grid-cols-2 gap-6">
-              {/* Full Name */}
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-[#475569] mb-2">
                   Full Name
@@ -71,11 +138,11 @@ export default function EditUser() {
                   name="name"
                   value={form.name}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#2460B9] text-sm transition"
+                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm"
+                  disabled={loading || saving}
                 />
               </div>
 
-              {/* Username */}
               <div>
                 <label className="block text-xs font-medium text-[#475569] mb-2">
                   Username
@@ -85,11 +152,11 @@ export default function EditUser() {
                   name="username"
                   value={form.username}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#2460B9] text-sm transition"
+                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm"
+                  disabled={loading || saving}
                 />
               </div>
 
-              {/* Email */}
               <div>
                 <label className="block text-xs font-medium text-[#475569] mb-2">
                   Email
@@ -99,11 +166,11 @@ export default function EditUser() {
                   name="email"
                   value={form.email}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#2460B9] text-sm transition"
+                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm"
+                  disabled={loading || saving}
                 />
               </div>
 
-              {/* Phone */}
               <div>
                 <label className="block text-xs font-medium text-[#475569] mb-2">
                   Phone Number
@@ -113,21 +180,22 @@ export default function EditUser() {
                   name="phone"
                   value={form.phone}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#2460B9] text-sm transition"
+                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm"
+                  disabled={loading || saving}
                 />
               </div>
 
-              {/* Vehicle Plate */}
               <div>
                 <label className="block text-xs font-medium text-[#475569] mb-2">
-                  Vehicle Plate
+                  Linked Vehicles
                 </label>
                 <input
                   type="text"
                   name="plate"
                   value={form.plate}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#2460B9] text-sm transition"
+                  className="w-full px-4 py-3 rounded-xl border border-[#CBD5E1] text-sm bg-[#F8FAFC]"
+                  disabled
                 />
               </div>
             </div>
@@ -135,21 +203,22 @@ export default function EditUser() {
 
           <div className="h-px bg-[#E2E8F0]" />
 
-          {/* ===== ACTIONS ===== */}
           <div className="flex justify-end gap-4">
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="px-6 py-2.5 rounded-xl border border-[#CBD5E1] text-[#334155] hover:bg-[#F1F5F9] transition text-sm font-medium"
+              className="px-6 py-2.5 rounded-xl border border-[#CBD5E1]"
+              disabled={saving}
             >
               Cancel
             </button>
 
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl bg-[#2460B9] hover:bg-[#1E4EA1] text-white transition text-sm font-medium shadow-sm"
+              className="px-6 py-2.5 rounded-xl bg-[#2460B9] text-white disabled:opacity-70"
+              disabled={loading || saving}
             >
-              Save Changes
+              {saving ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>
